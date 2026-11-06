@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1793930302|7642607';
+const CACHE_VERSION = '1793959712|5401082';
 /** @type {string} */
 const CACHE_PREFIX = 'Ceci The Brave-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
