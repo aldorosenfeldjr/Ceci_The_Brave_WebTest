@@ -21,6 +21,7 @@ const CACHEABLE_FILES = ["index.wasm","index.pck"];
 const FULL_CACHE = CACHED_FILES.concat(CACHEABLE_FILES);
 
 self.addEventListener('install', (event) => {
+	self.skipWaiting(); // CECI_PATCH: a versão nova assume na hora
 	event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHED_FILES)));
 });
 
@@ -30,7 +31,7 @@ self.addEventListener('activate', (event) => {
 			// Remove old caches.
 			return Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
 		}
-	).then(function () {
+	).then(() => self.clients.claim()).then(function () {
 		// Enable navigation preload if available.
 		return ('navigationPreload' in self.registration) ? self.registration.navigationPreload.enable() : Promise.resolve();
 	}));
@@ -102,24 +103,15 @@ self.addEventListener(
 		const isCacheable = FULL_CACHE.some((v) => v === local) || (base === referrer && base.endsWith(CACHED_FILES[0]));
 		if (isNavigate || isCacheable) {
 			event.respondWith((async () => {
-				// Try to use cache first
+				// CECI_PATCH: internet primeiro (sempre a versão nova); o cache só vale sem internet
 				const cache = await caches.open(CACHE_NAME);
-				if (isNavigate) {
-					// Check if we have full cache during HTML page request.
-					/** @type {Response[]} */
-					const fullCache = await Promise.all(FULL_CACHE.map((name) => cache.match(name)));
-					const missing = fullCache.some((v) => v === undefined);
-					if (missing) {
-						try {
-							// Try network if some cached file is missing (so we can display offline page in case).
-							const response = await fetchAndCache(event, cache, isCacheable);
-							return response;
-						} catch (e) {
-							// And return the hopefully always cached offline page in case of network failure.
-							console.error('Network error: ', e); // eslint-disable-line no-console
-							return caches.match(OFFLINE_URL);
-						}
+				try {
+					const response = await fetchAndCache(event, cache, isCacheable);
+					if (response && response.ok) {
+						return response;
 					}
+				} catch (e) {
+					console.warn('Offline, usando o cache: ', e); // eslint-disable-line no-console
 				}
 				let cached = await cache.match(event.request);
 				if (cached != null) {
@@ -128,9 +120,7 @@ self.addEventListener(
 					}
 					return cached;
 				}
-				// Try network if don't have it in cache.
-				const response = await fetchAndCache(event, cache, isCacheable);
-				return response;
+				return isNavigate ? caches.match(OFFLINE_URL) : Response.error();
 			})());
 		} else if (ENSURE_CROSSORIGIN_ISOLATION_HEADERS) {
 			event.respondWith((async () => {

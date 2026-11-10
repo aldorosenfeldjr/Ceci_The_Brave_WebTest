@@ -52,6 +52,12 @@ body { background: #140a20; color: #fff; overflow: hidden; touch-action: none; }
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 <link rel="manifest" href="index.manifest.json">
 <style>body{background:#140a20}</style><script>window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.ceciInstall=e;});</script>
+<script>/* CECI_PATCH: quando a versão nova do jogo assume, recarrega uma vez */
+if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloaded) { reloaded = true; location.reload(); } });
+}
+</script>
 </head>
 <body>
 <canvas id="canvas">Seu navegador não mostra este jogo.</canvas>
